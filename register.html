@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account — SentraSafe</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06090f;--bg2:#0c1018;--bg3:#111827;--card:#0f1520;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);--blue:#3b82f6;--blue2:rgba(59,130,246,0.12);--red:#ef4444;--red2:rgba(239,68,68,0.12);--green:#22c55e;--green2:rgba(34,197,94,0.1);--text:#f1f5f9;--text2:#94a3b8}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.auth-wrap{width:100%;max-width:440px}
+.logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:32px;text-decoration:none}
+.logo-mark{width:36px;height:36px;background:var(--blue);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:20px;height:20px}
+.logo-name{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
+.logo-name span{color:var(--blue)}
+.auth-card{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:36px}
+.auth-card h1{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:6px}
+.auth-card p{font-size:14px;color:var(--text2);margin-bottom:28px}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:7px}
+.fc{width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;transition:.2s}
+.fc:focus{outline:none;border-color:var(--blue)}
+.btn{width:100%;padding:13px;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:15px;cursor:pointer;transition:.2s;background:var(--blue);color:#fff;margin-top:4px}
+.btn:hover{background:#2563eb}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.auth-switch{text-align:center;font-size:14px;color:var(--text2);margin-top:20px}
+.auth-switch a{color:var(--blue);text-decoration:none}
+.err{background:var(--red2);border:1px solid rgba(239,68,68,.25);color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none}
+.benefits{display:flex;flex-direction:column;gap:8px;margin-bottom:28px}
+.benefit{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
+.check{color:var(--green);font-weight:700}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(59,130,246,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:-1}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="auth-wrap">
+  <a href="index.html" class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <span class="logo-name">Sentra<span>Safe</span></span>
+  </a>
+  <div class="auth-card">
+    <h1>Create your account</h1>
+    <p>Free forever. No credit card needed.</p>
+    <div class="benefits">
+      <div class="benefit"><span class="check">✓</span> Unlimited AI content analysis</div>
+      <div class="benefit"><span class="check">✓</span> Incident reporting with tracking</div>
+      <div class="benefit"><span class="check">✓</span> 24/7 AI support assistant</div>
+      <div class="benefit"><span class="check">✓</span> Personal safety dashboard</div>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="fg"><label>Full name</label><input class="fc" id="name" placeholder="Jane Doe" autofocus></div>
+    <div class="fg"><label>Email address</label><input class="fc" id="email" type="email" placeholder="you@email.com"></div>
+    <div class="fg"><label>Password</label><input class="fc" id="password" type="password" placeholder="Min 8 characters" onkeydown="if(event.key==='Enter')doRegister()"></div>
+    <button class="btn" id="regBtn" onclick="doRegister()">Create free account →</button>
+    <div class="auth-switch">Already have an account? <a href="login.html">Login</a></div>
+  </div>
+</div>
+<script>
+const API = window.location.origin;
+async function doRegister() {
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const err = document.getElementById('err');
+  const btn = document.getElementById('regBtn');
+  err.style.display = 'none';
+  if (!name || !email || !password) { err.textContent = 'Please fill all fields'; err.style.display = 'block'; return; }
+  if (password.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.style.display = 'block'; return; }
+  btn.textContent = 'Creating account...'; btn.disabled = true;
+  try {
+    localStorage.removeItem('ss_token'); localStorage.removeItem('ss_user');
+    const r = await fetch(`${API}/api/auth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email, password }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    localStorage.setItem('ss_token', d.token);
+    localStorage.setItem('ss_user', JSON.stringify(d.user));
+    window.location.href = 'dashboard.html';
+  } catch(e) { err.textContent = e.message; err.style.display = 'block'; btn.textContent = 'Create free account →'; btn.disabled = false; }
+}
+</script>
+</body>
+</html>
