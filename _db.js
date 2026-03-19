@@ -1,6 +1,15 @@
-const { sql } = require('@vercel/postgres');
+const { neon } = require('@neondatabase/serverless');
 
-// Run schema migrations — idempotent, safe to call on every request
+// Create the raw Neon SQL function
+const _sql = neon(process.env.DATABASE_URL);
+
+// Wrap it so it always returns { rows: [...] }
+// This keeps all route files unchanged — they all use `const { rows } = await sql\`...\``
+function sql(strings, ...values) {
+  return _sql(strings, ...values).then(rows => ({ rows }));
+}
+
+// Schema migration — idempotent, safe to call on every cold start
 async function ensureSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS users (
@@ -70,9 +79,9 @@ async function ensureSchema() {
     )
   `;
 
-  // Seed admin if not exists
-  const { rows } = await sql`SELECT id FROM users WHERE role='admin' LIMIT 1`;
-  if (!rows.length) {
+  // Seed admin
+  const { rows: adminRows } = await sql`SELECT id FROM users WHERE role='admin' LIMIT 1`;
+  if (!adminRows.length) {
     const bcrypt = require('bcryptjs');
     const { v4: uuidv4 } = require('uuid');
     await sql`
@@ -87,21 +96,22 @@ async function ensureSchema() {
       )
       ON CONFLICT (email) DO NOTHING
     `;
+    console.log('✅ Admin seeded');
   }
 
-  // Seed resources if not exists
+  // Seed resources
   const { rows: resRows } = await sql`SELECT COUNT(*) as c FROM resources`;
-  if (resRows[0].c === '0') {
+  if (parseInt(resRows[0].c) === 0) {
     const { v4: uuidv4 } = require('uuid');
     const resources = [
-      { title: 'Crisis Text Line', desc: 'Text HOME to 741741 for free 24/7 crisis support', cat: 'emergency', icon: '🆘', featured: true },
-      { title: 'Cyber Civil Rights Initiative', desc: 'Support for victims of non-consensual intimate images and online harassment', cat: 'harassment', icon: '🛡️', featured: true },
-      { title: 'StopBullying.gov', desc: 'Official resource for cyberbullying prevention and response', cat: 'bullying', icon: '📋', featured: false },
-      { title: 'PolitiFact Fact Checker', desc: 'Verify claims and identify misinformation before sharing', cat: 'misinformation', icon: '🔍', featured: false },
-      { title: 'Anti-Defamation League', desc: 'Resources for victims of hate speech and discrimination', cat: 'hate_speech', icon: '💙', featured: true },
-      { title: 'Mental Health Support', desc: 'Online harassment causes real trauma. BetterHelp and Talkspace offer online therapy', cat: 'mental_health', icon: '🧠', featured: true },
-      { title: 'Electronic Frontier Foundation', desc: 'Digital rights, legal resources and guides for online safety', cat: 'legal', icon: '🌐', featured: false },
-      { title: 'National Domestic Violence Hotline', desc: 'Call 1-800-799-7233 if online harassment extends to physical threats', cat: 'emergency', icon: '📞', featured: false },
+      { title: 'Crisis Text Line',              desc: 'Text HOME to 741741 for free 24/7 crisis support',                             cat: 'emergency',     icon: '🆘', featured: true  },
+      { title: 'Cyber Civil Rights Initiative', desc: 'Support for victims of non-consensual intimate images and online harassment',  cat: 'harassment',    icon: '🛡️', featured: true  },
+      { title: 'StopBullying.gov',              desc: 'Official resource for cyberbullying prevention and response',                  cat: 'bullying',      icon: '📋', featured: false },
+      { title: 'PolitiFact Fact Checker',       desc: 'Verify claims and identify misinformation before sharing',                    cat: 'misinformation',icon: '🔍', featured: false },
+      { title: 'Anti-Defamation League',        desc: 'Resources for victims of hate speech and discrimination',                     cat: 'hate_speech',   icon: '💙', featured: true  },
+      { title: 'Mental Health Support',         desc: 'Online harassment causes real trauma. BetterHelp and Talkspace offer therapy',cat: 'mental_health', icon: '🧠', featured: true  },
+      { title: 'Electronic Frontier Foundation',desc: 'Digital rights, legal resources and guides for online safety',               cat: 'legal',         icon: '🌐', featured: false },
+      { title: 'National DV Hotline',           desc: 'Call 1-800-799-7233 if online harassment extends to physical threats',        cat: 'emergency',     icon: '📞', featured: false },
     ];
     for (const r of resources) {
       await sql`
@@ -110,6 +120,7 @@ async function ensureSchema() {
         ON CONFLICT DO NOTHING
       `;
     }
+    console.log('✅ Resources seeded');
   }
 }
 
